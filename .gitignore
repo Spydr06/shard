@@ -1,0 +1,15 @@
+*.a
+*.so
+*.o
+*.out
+*.exe
+
+libffi-*
+gc-*
+libatomic_ops-*
+
+build/
+compile_commands.json
+
+vgcore.*
+

@@ -1,0 +1,14 @@
+let
+    dl = system.dlOpen null;
+
+    puts = xs :: string: let
+        f = system.dlSym dl "puts" $ with builtins;
+            ffi.cFunc ffi.cInt [ (ffi.cPointer $ ffi.cChar) ];
+        in f xs;
+
+    printf = fmt :: string: args :: list: let
+         system.dlSym dl "printf" $ with builtins;
+            ffi.cVarFunc ffi.cInt [ (ffi.cPointer $ ffi.cChar) ];
+        #in f fmt args;
+in printf
+
