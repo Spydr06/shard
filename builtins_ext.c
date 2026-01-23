@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-#ifndef _SHARD_NO_FFI
+#ifdef SHARD_ENABLE_FFI
 #include <dlfcn.h>
 #endif
 
@@ -106,7 +106,7 @@ int load_ext_builtins(struct shard_context* ctx, int argc, char** argv) {
     if(err)
         return err;
 
-#ifndef _SHARD_NO_FFI
+#ifdef SHARD_ENABLE_FFI
     if((err = shard_enable_ffi(ctx)))
         return err;
 #endif
@@ -139,7 +139,7 @@ static struct shard_value builtin_setEnv(volatile struct shard_evaluator* e, str
 }
 
 static struct shard_value builtin_dlOpen(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
-#ifndef _SHARD_NO_FFI
+#ifdef SHARD_ENABLE_FFI
     struct shard_value path = shard_builtin_eval_arg(e, builtin, args, 0);
 
     const char *dlpath = path.type == SHARD_VAL_NULL ? NULL : path.path;
@@ -166,7 +166,7 @@ static struct shard_value builtin_dlOpen(volatile struct shard_evaluator* e, str
 }
 
 static struct shard_value builtin_dlClose(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
-#ifndef _SHARD_NO_FFI 
+#ifdef SHARD_ENABLE_FFI 
     struct shard_value dylib = shard_builtin_eval_arg(e, builtin, args, 0);
 
     int err;
@@ -187,7 +187,7 @@ static struct shard_value builtin_dlClose(volatile struct shard_evaluator* e, st
 }
 
 static struct shard_value builtin_dlSym(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
-#ifndef _SHARD_NO_FFI
+#ifdef SHARD_ENABLE_FFI
     struct shard_value dylib_val = shard_builtin_eval_arg(e, builtin, args, 0);
     struct shard_value symbol_val = shard_builtin_eval_arg(e, builtin, args, 1);
     struct shard_value ffi_type_val = shard_builtin_eval_arg(e, builtin, args, 2);

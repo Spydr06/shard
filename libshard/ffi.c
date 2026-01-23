@@ -797,6 +797,14 @@ static struct shard_value builtin_cAssign(volatile struct shard_evaluator* e, st
 
 #else
 
+SHARD_DECL struct shard_value shard_ffi_bind(volatile struct shard_evaluator* e, const char* symbol_name, void* symbol_address, struct shard_set* ffi_type) {
+    (void) e;
+    (void) symbol_name;
+    (void) symbol_address;
+    (void) ffi_type;
+    return NULL_VAL();
+}
+
 SHARD_DECL int shard_enable_ffi(struct shard_context *) {
     return EINVAL;
 }

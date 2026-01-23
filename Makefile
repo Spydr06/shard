@@ -1,51 +1,50 @@
-PREFIX ?= /
-BUILD_DIR ?= build
+include config.mk
+
+override MAKEFLAGS=-rR
 
 LIBSHARD_DIR := libshard
 
 LIBFFI_VERSION ?= 3.4.5
+LIBATOMIC_OPS_VERSION ?= 7.8.0
+GCBOEHM_VERSION ?= 8.2.4
 
 LIBFFI_TAR_LINK ?= https://github.com/libffi/libffi/releases/download/v$(LIBFFI_VERSION)/libffi-$(LIBFFI_VERSION).tar.gz
 LIBFFI_TAR := $(shell basename $(LIBFFI_TAR_LINK))
 LIBFFI_SRC_DIR := $(patsubst %.tar.gz, %, $(LIBFFI_TAR))
-
-LIBFFI_LIB := $(BUILD_DIR)/libffi.a
-
-LIBATOMIC_OPS_VERSION ?= 7.8.0
+LIBFFI_LIB := $(BUILD_PREFIX)/libffi.a
 
 LIBATOMIC_OPS_TAR_LINK ?= https://www.hboehm.info/gc/gc_source/libatomic_ops-$(LIBATOMIC_OPS_VERSION).tar.gz
 LIBATOMIC_OPS_TAR := $(shell basename $(LIBATOMIC_OPS_TAR_LINK))
 LIBATOMIC_OPS_SRC_DIR := $(patsubst %.tar.gz, %, $(LIBATOMIC_OPS_TAR))
 
-GCBOEHM_VERSION ?= 8.2.4
-
 GCBOEHM_TAR_LINK ?= https://www.hboehm.info/gc/gc_source/gc-$(GCBOEHM_VERSION).tar.gz
 GCBOEHM_TAR := $(shell basename $(GCBOEHM_TAR_LINK))
 GCBOEHM_SRC_DIR := $(patsubst %.tar.gz, %, $(GCBOEHM_TAR))
-
 GCBOEHM_LIB := $(GCBOEHM_SRC_DIR)/.libs/libgc.a
 
-SHARD_BIN := $(BUILD_DIR)/shard
-LIBSHARD := $(BUILD_DIR)/libshard.a
-LIBSHARD_OBJ := $(BUILD_DIR)/libshard.o
+SHARD_BIN := $(BUILD_PREFIX)/shard
+LIBSHARD := $(BUILD_PREFIX)/libshard.a
+LIBSHARD_OBJ := $(BUILD_PREFIX)/libshard.o
 
 LIBSHARD_H := libshard/include/libshard.h
 
 LIBSHARD_SOURCES := $(shell find $(LIBSHARD_DIR) -name '*.c')
-LIBSHARD_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(LIBSHARD_SOURCES))
+LIBSHARD_OBJECTS := $(patsubst %.c, $(BUILD_PREFIX)/%.o, $(LIBSHARD_SOURCES))
 
 SHARDBIN_SOURCES := $(wildcard *.c)
-SHARDBIN_OBJECTS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SHARDBIN_SOURCES))
+SHARDBIN_OBJECTS := $(patsubst %.c, $(BUILD_PREFIX)/%.o, $(SHARDBIN_SOURCES))
 
 TEST_RUNNER_SOURCE := tests/runner.c
-TEST_RUNNER_BIN := $(BUILD_DIR)/tests/runner
+TEST_RUNNER_BIN := $(BUILD_PREFIX)/tests/runner
 
 DRIVERS_DIR := drivers
 
-LIBC_DRIVER := $(BUILD_DIR)/$(DRIVERS_DIR)/shard_libc_driver.o
+LIBC_DRIVER := $(BUILD_PREFIX)/$(DRIVERS_DIR)/shard_libc_driver.o
 LIBC_DRIVER_SOURCE := $(DRIVERS_DIR)/shard_libc_driver.c
 LIBC_DRIVER_HEADER := $(DRIVERS_DIR)/shard_libc_driver.h
 
+CC ?= cc
+LD ?= ld
 AR ?= ar
 RANLIB ?= ranlib
 
@@ -58,7 +57,7 @@ override LDFLAGS := $(call unique, $(LDFLAGS))
 override CFLAGS += -Wall -Wextra -std=c2x -I$(LIBSHARD_DIR)/include
 override CFLAGS := $(call unique, $(CFLAGS))
 
-ifneq (,$(findstring SHARD_USE_GCBOEHM, $(CFLAGS)))
+ifneq (,$(findstring SHARD_ENABLE_GCBOEHM, $(CFLAGS)))
 	LIBSHARD_OBJECTS += $(GCBOEHM_LIB)
 	GCBOEHM_INCLUDE_DIR := $(GCBOEHM_SRC_DIR)
 	override CFLAGS += -I$(GCBOEHM_SRC_DIR)/include
@@ -71,7 +70,7 @@ endif
 
 override BIN_LDFLAGS := 
 
-ifeq (,$(findstring _SHARD_NO_LIBEDIT, $(CFLAGS)))
+ifneq (,$(findstring SHARD_ENABLE_LIBEDIT, $(CFLAGS)))
 	override BIN_LDFLAGS += -ledit -lm
 endif
 
@@ -89,9 +88,9 @@ debug: CFLAGS += -fsanitize=address,undefined -g
 debug: LDFLAGS += -lasan -lubsan
 debug: all
 
-$(BUILD_DIR):
-	@echo "  MKDIR $(BUILD_DIR)"
-	@mkdir -p $(BUILD_DIR)
+$(BUILD_PREFIX):
+	@echo "  MKDIR $(BUILD_PREFIX)"
+	@mkdir -p $(BUILD_PREFIX)
 
 $(SHARD_BIN): $(SHARDBIN_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@echo "  CCLD  $@"
@@ -106,11 +105,11 @@ $(LIBSHARD): $(LIBSHARD_OBJ)
 .PHONY: libshard_obj
 libshard_obj: $(LIBSHARD_OBJ)
 
-$(LIBSHARD_OBJ): $(LIBSHARD_OBJECTS) | $(BUILD_DIR)	
+$(LIBSHARD_OBJ): $(LIBSHARD_OBJECTS) | $(BUILD_PREFIX)	
 	@echo "  LD    $@"
 	@$(LD) -r $^ -o $@
 
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR) $(GCBOEHM_INCLUDE_DIR)
+$(BUILD_PREFIX)/%.o: %.c | $(BUILD_PREFIX) $(GCBOEHM_INCLUDE_DIR)
 	@echo "  CC    $^"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -MMD -MP -MF "$(@:%.o=%.d)" -c $^ -o $@
@@ -118,7 +117,7 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR) $(GCBOEHM_INCLUDE_DIR)
 .PHONY: libffi
 libffi: $(LIBFFI_LIB)
 
-$(LIBFFI_LIB): $(LIBFFI_SRC_DIR)/Makefile | $(BUILD_DIR)
+$(LIBFFI_LIB): $(LIBFFI_SRC_DIR)/Makefile | $(BUILD_PREFIX)
 	$(MAKE) -C $(LIBFFI_SRC_DIR)
 	cp -rv $(shell find $(LIBFFI_SRC_DIR) -name 'libffi.a') $@
 
@@ -211,7 +210,7 @@ clean-all: clean clean-gcboehm clean-libffi
 
 .PHONY: clean
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_PREFIX)
 
 .PHONY: clean-gcboehm
 clean-gcboehm: clean

@@ -3,6 +3,7 @@
 *.o
 *.out
 *.exe
+*.mk
 
 libffi-*
 gc-*

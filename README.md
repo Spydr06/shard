@@ -58,9 +58,10 @@ There are a few example programs in the `examples/` directory
 
 There are no dependencies other that `libc` to the pure implementation of shard. Optionally, you may use the `gcboehm` library for a more performant garbage collector and `libffi` for ffi capabilities of the `shard` runner.
 
-To build `libshard` and the `shard` asdf, just run `make` in this directory:
+To build `libshard` and the `shard` executable, configure the build system and then run `make`:
 
 ```sh
+$ ./configure
 $ make
 ```
 
@@ -68,14 +69,19 @@ If successful, the interpreter binary will be placed in `build/shard`. It can be
 
 There are other make targets available that build the respective programs in the shard ecosystem: `all`, `libshard`, `test`, ...
 
-To use `gcboehm`, define `SHARD_USE_GCBOEHM=1` in the `CFLAGS` environment variable.
+To use the Boehm Garbage-Collector library, pass `--enable-gcboehm=yes` to the configure script (default is `no`, which corresponds to the builtin garbage collector).
 
-To enable the foreign function interface, define `SHARD_ENABLE_FFI=1` in the `CFLAGS` environment variable.
+To enable the foreign function interface, pass `--enable-ffi=yes` to the configure script (default is `no`).
 
-A "fully-equipped" shard build therefore can be built using:
+To enable `libedit` in the REPL, pass `--enable-libedit=yes` to the configure script (default is `no`).
+
+For debugging, pass `--enable-ubsan` and `--enable-asan` to the configure script.
+
+A "fully-equipped" shard build therefore can be made using:
 
 ```sh
-$ make CFLAGS='-DSHARD_USE_GCBOEHM=1 -DSHARD_ENABLE_FFI=1'
+$ ./configure --enable-gcboehm=yes --enable-ffi=yes --enable-libedit=yes
+$ make
 ```
 
 ## Testing

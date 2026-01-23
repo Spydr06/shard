@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef _SHARD_NO_LIBEDIT
+#ifdef SHARD_ENABLE_LIBEDIT
 #include <histedit.h>
 #endif
 
@@ -327,7 +327,7 @@ cleanup:
     return EXIT_SUCCESS;
 }
 
-#ifdef _SHARD_NO_LIBEDIT
+#ifndef SHARD_ENABLE_LIBEDIT
 
 static char* repl_prompt(void) {
     return "shard> ";
@@ -372,7 +372,7 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
     struct repl repl;
     repl_init(&repl, ctx, echo_result);
 
-#ifdef _SHARD_NO_LIBEDIT
+#ifndef SHARD_ENABLE_LIBEDIT
     char* (*prompt)(void) = repl_prompt;
 #else
     EditLine* el = el_init(progname, stdin, stdout, stderr);
@@ -403,7 +403,7 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
     int line_buffer_count;
     char* line_buffer = malloc(line_buffer_size + 1);
 
-#ifdef _SHARD_NO_LIBEDIT
+#ifndef SHARD_ENABLE_LIBEDIT
     // TODO: support longer lines
     char line[1024];
 
@@ -433,7 +433,7 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
         if(line_buffer_count > 1 && line_buffer[line_buffer_count - 2] == '\\') {
             line_buffer[line_buffer_count -= 2] = '\n';
             multiline = true;
-#ifdef _SHARD_NO_LIBEDIT
+#ifndef SHARD_ENABLE_LIBEDIT
             prompt = multiline_prompt;
 #else
             el_set(el, EL_PROMPT, multiline_prompt);
@@ -442,7 +442,7 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
         }
 
         multiline = false;
-#ifdef _SHARD_NO_LIBEDIT
+#ifndef SHARD_ENABLE_LIBEDIT
         prompt = repl_prompt;
 #else
         el_set(el, EL_PROMPT, repl_prompt);
@@ -450,7 +450,7 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
     
         handle_line(&repl, strdup(line_buffer));
 
-#ifndef _SHARD_NO_LIBEDIT
+#ifdef SHARD_ENABLE_LIBEDIT
         if((line_buffer_count = strlen(line_buffer)))
            history(hist, &hist_ev, H_ENTER, line_buffer);
 #endif
@@ -460,7 +460,7 @@ int shard_repl(const char* progname, struct shard_context* ctx, bool echo_result
 
     free(line_buffer);
 
-#ifndef _SHARD_NO_LIBEDIT
+#ifdef SHARD_ENABLE_LIBEDIT
     history_end(hist);
     el_end(el);
 #endif

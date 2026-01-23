@@ -1,7 +1,7 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
-#ifdef SHARD_USE_GCBOEHM
+#ifdef SHARD_ENABLE_GCBOEHM
 
 #include <gc.h>
 
@@ -69,5 +69,5 @@ char* shard_gc_strdup(volatile struct shard_gc* gc, const char* str, size_t size
     return GC_STRNDUP(str, size);
 }
 
-#endif /* SHARD_USE_GCBOEHM */
+#endif /* SHARD_ENABLE_GCBOEHM */
 

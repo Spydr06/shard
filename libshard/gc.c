@@ -2,7 +2,7 @@
 #include <libshard.h>
 #include <libshard-internal.h>
 
-#ifndef SHARD_USE_GCBOEHM
+#ifndef SHARD_ENABLE_GCBOEHM
 
 const enum shard_gc_backend _shard_gc_backend = SHARD_GC_BUILTIN;
 
@@ -519,5 +519,5 @@ char* shard_gc_strdup(volatile struct shard_gc* gc, const char* str, size_t size
     return dup;
 }
 
-#endif /* SHARD_USE_GCBOEHM */
+#endif /* SHARD_ENABLE_GCBOEHM */
 
