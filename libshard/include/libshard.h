@@ -687,6 +687,22 @@ SHARD_DECL int shard_enable_ffi(struct shard_context *ctx);
 
 SHARD_DECL struct shard_value shard_ffi_bind(volatile struct shard_evaluator *e, const char* symbol, void *sym, struct shard_set *type);
 
+enum shard_string_reader_flags : uint8_t {
+    SHARD_STRING_READER_AUTOFREE = 1
+};
+
+struct shard_string_reader {
+    const char* buf;
+    size_t buf_size;
+    size_t offset;
+    void (*dtor)(void*);
+};
+
+void shard_string_reader_new(struct shard_context* ctx, struct shard_string_reader* dest, const char* buf, size_t buf_size, enum shard_string_reader_flags flags);
+void shard_string_reader_free(struct shard_string_reader* reader);
+
+int shard_string_source(struct shard_context* ctx, struct shard_source* dest, const char* origin, const char* buf, size_t buf_size, enum shard_string_reader_flags flags);
+
 #ifdef _LIBSHARD_INTERNAL
     #include <libshard-internal.h>
 #endif /* _LIBSHARD_INTERAL */

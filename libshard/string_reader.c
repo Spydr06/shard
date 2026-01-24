@@ -1,6 +1,5 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
-#include <libshard-util.h>
 
 #include <stdio.h>
 

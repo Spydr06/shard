@@ -24,6 +24,7 @@ GCBOEHM_LIB := $(GCBOEHM_SRC_DIR)/.libs/libgc.a
 
 SHARD_BIN := $(BUILD_PREFIX)/shard
 LIBSHARD := $(BUILD_PREFIX)/libshard.a
+LIBSHARD_SO := $(BUILD_PREFIX)/libshard.so
 LIBSHARD_OBJ := $(BUILD_PREFIX)/libshard.o
 
 LIBSHARD_H := libshard/include/libshard.h
@@ -75,10 +76,13 @@ ifneq (,$(findstring SHARD_ENABLE_LIBEDIT, $(CFLAGS)))
 endif
 
 .PHONY: all
-all: $(LIBSHARD) $(SHARD_BIN) $(LIBC_DRIVER)
+all: static shared bin $(LIBC_DRIVER)
 
-.PHONY: lib
-lib: $(LIBSHARD)
+.PHONY: static
+static: $(LIBSHARD)
+
+.PHONY: shared
+shared: $(LIBSHARD_SO)
 
 .PHONY: bin
 bin: $(SHARD_BIN)
@@ -99,8 +103,12 @@ $(SHARD_BIN): $(SHARDBIN_OBJECTS) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 $(LIBSHARD): $(LIBSHARD_OBJ)
 	@echo "  AR    $@"	
 	@$(AR) -rcs $@ $<
-	@echo " RANLIB	$@"
+	@echo " RANLIB	$@ (static)"
 	@$(RANLIB) $@
+
+$(LIBSHARD_SO): $(LIBHSARD_OBJECTS)
+	@echo "  CCLD  $@ (shared)"
+	@$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 .PHONY: libshard_obj
 libshard_obj: $(LIBSHARD_OBJ)
@@ -119,7 +127,7 @@ libffi: $(LIBFFI_LIB)
 
 $(LIBFFI_LIB): $(LIBFFI_SRC_DIR)/Makefile | $(BUILD_PREFIX)
 	$(MAKE) -C $(LIBFFI_SRC_DIR)
-	cp -rv $(shell find $(LIBFFI_SRC_DIR) -name 'libffi.a') $@
+	cp -rv $$(find $(LIBFFI_SRC_DIR) -name 'libffi.a') $@
 
 $(LIBFFI_SRC_DIR)/Makefile: $(LIBFFI_SRC_DIR)
 	@echo "  PUSHD $(LIBFFI_SRC_DIR)"		&& \
@@ -188,12 +196,22 @@ $(TEST_RUNNER_BIN): $(TEST_RUNNER_SOURCE) $(LIBSHARD_OBJ) $(LIBC_DRIVER)
 	@echo "  CC    $< -> $@"
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^	
 
-.PHONY: install
-install: install-lib
+.PHONY: install-all
+install-all: install install-libc-driver install-bin
 
-.PHONY: install-lib
-install-lib: $(LIBSHARD)
+.PHONY: install
+install: install-static install-shared install-headers
+
+.PHONY: install-static
+install-static: $(LIBSHARD)
 	install -m "644" $(LIBSHARD) $(PREFIX)/lib/$(notdir $(LIBSHARD))
+
+.PHONY: install-shared
+install-shared: $(LIBSHARD_SO)
+	install -m "644" $(LIBSHARD_SO) $(PREFIX)/lib/$(notdir $(LIBSHARD_SO))
+
+.PHONY: install-headers
+install-headers: $(LIBSHARD_H) $(LIB)
 	install -m "644" $(LIBSHARD_H) $(PREFIX)/include/$(notdir $(LIBSHARD_H))
 
 .PHONY: install-bin

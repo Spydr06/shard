@@ -153,13 +153,13 @@ static void ffi_write_long(volatile struct shard_evaluator* e, void* address, st
     *(long*) address = value.integer;
 }
 
-struct shard_value ffi_read_longlong(volatile struct shard_evaluator* e, const void* address, struct shard_set* ffi_type) {
+/*struct shard_value ffi_read_longlong(volatile struct shard_evaluator* e, const void* address, struct shard_set* ffi_type) {
     (void) e;
     (void) ffi_type;
     return INT_VAL(*(const long long*) address);
-}
+}*/
 
-static void ffi_write_longlong(volatile struct shard_evaluator* e, void* address, struct shard_value value, struct shard_set* ffi_type) {
+/*static void ffi_write_longlong(volatile struct shard_evaluator* e, void* address, struct shard_value value, struct shard_set* ffi_type) {
     (void) ffi_type;
 
     if(value.type != SHARD_VAL_INT)
@@ -167,7 +167,7 @@ static void ffi_write_longlong(volatile struct shard_evaluator* e, void* address
                 shard_value_type_to_string(e->ctx, value.type));
 
     *(long long*) address = value.integer;
-}
+}*/
 
 struct shard_value ffi_read_size_t(volatile struct shard_evaluator* e, const void* address, struct shard_set* ffi_type) {
     (void) e;
@@ -277,10 +277,17 @@ static void ffi_write_pointer(volatile struct shard_evaluator* e, void* address,
 }
 
 struct shard_value ffi_read_struct(volatile struct shard_evaluator* e, const void* address, struct shard_set* ffi_type) {
+    (void) e;
+    (void) address;
+    (void) ffi_type;
     assert(false && "unimplemented");
 }
 
 static void ffi_write_struct(volatile struct shard_evaluator* e, void* address, struct shard_value value, struct shard_set* ffi_type) {
+    (void) e;
+    (void) address;
+    (void) value;
+    (void) ffi_type;
     assert(false && "unimplemented");
 }
 
@@ -383,7 +390,7 @@ static struct shard_list* c_arglist(volatile struct shard_evaluator* e, struct s
     return arg_list.list.head;
 }
 
-static bool c_isvariadic(volatile struct shard_evaluator *e, struct shard_set *ffi_type) {
+/*static bool c_isvariadic(volatile struct shard_evaluator *e, struct shard_set *ffi_type) {
     if(!c_typeis(e, ffi_type, "function"))
         return false;
 
@@ -393,7 +400,7 @@ static bool c_isvariadic(volatile struct shard_evaluator *e, struct shard_set *f
 
     struct shard_value variadic = shard_eval_lazy2(e, lazy_variadic);
     return variadic.type == SHARD_VAL_BOOL && variadic.boolean;
-}
+}*/
 
 static struct shard_set* c_return(volatile struct shard_evaluator* e, struct shard_set* ffi_type) {
     if(!c_typeis(e, ffi_type, "function"))
@@ -458,7 +465,7 @@ SHARD_DECL int shard_enable_ffi(struct shard_context* ctx) {
         struct shard_value value;
         struct ffi_type_ops ops;
     } ffi_constants[] = {
-        {"builtins.ffi.void", SET_VAL(ffi_void), {NULL, NULL, NULL, NULL, NULL}},
+        {"builtins.ffi.void", SET_VAL(ffi_void), {NULL, NULL, NULL}},
 
         {"builtins.ffi.cVoid", PRIMITIVE_CTYPE(ctx, void, &ffi_type_void), FFI_OPS(void, void)},
         {"builtins.ffi.cBool", PRIMITIVE_CTYPE(ctx, bool, &ffi_type_uint8), FFI_OPS(bool, bool)},

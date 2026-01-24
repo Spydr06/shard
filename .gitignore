@@ -10,6 +10,7 @@ gc-*
 libatomic_ops-*
 
 build/
+.cache/
 compile_commands.json
 
 vgcore.*
