@@ -100,6 +100,7 @@ static const unsigned token_widths[] = {
     1, // -
     1, // *
     1, // /
+    1, // %
     1, // |
     2, // &&
     2, // ||
@@ -712,6 +713,10 @@ repeat:
         case '@':
             next_char(l);
             KEYWORD_TOK(token, l, AT);
+            break;
+        case '%':
+            next_char(l);
+            KEYWORD_TOK(token, l, PERCENT);
             break;
         case '$':
             next_char(l);

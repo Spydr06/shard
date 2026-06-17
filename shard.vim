@@ -30,7 +30,7 @@ hi def link shardParens Delimiter
 syn match shardDelims "[.,;]"
 hi def link shardDelims Delimiter
 
-syn match shardOperators "[=!<>:+\-@*/|&$]"
+syn match shardOperators "[=!<>:+\-@%*/|&$]"
 hi def link shardOperators Operator
 
 " Numbers

@@ -17,6 +17,7 @@ enum precedence {
     PREC_NOT,
     PREC_ADDITION,
     PREC_MULTIPLICATION,
+    PREC_MODULO,
     PREC_CONCATENATION,
     PREC_ATTRIBUTE_TEST,
     PREC_COMPOSITION,
@@ -1048,6 +1049,8 @@ static enum precedence get_precedence(enum shard_token_type type) {
         case SHARD_TOK_MUL:
         case SHARD_TOK_DIV:
             return PREC_MULTIPLICATION;
+        case SHARD_TOK_PERCENT:
+            return PREC_MODULO;
         case SHARD_TOK_CONCAT:
             return PREC_CONCATENATION;
         case SHARD_TOK_QUESTIONMARK:
@@ -1072,6 +1075,8 @@ static int parse_infix_expr(struct parser* p, struct shard_expr* expr, struct sh
             return parse_binop(p, expr, left, SHARD_EXPR_MUL, PREC_MULTIPLICATION);
         case SHARD_TOK_DIV:
             return parse_binop(p, expr, left, SHARD_EXPR_DIV, PREC_MULTIPLICATION);
+        case SHARD_TOK_PERCENT:
+            return parse_binop(p, expr, left, SHARD_EXPR_MOD, PREC_MODULO);
         case SHARD_TOK_EQ:
             return parse_binop(p, expr, left, SHARD_EXPR_EQ, PREC_EQUALITY);
         case SHARD_TOK_NE:

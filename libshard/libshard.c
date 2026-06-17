@@ -24,6 +24,7 @@ void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {
         case SHARD_EXPR_SUB:
         case SHARD_EXPR_MUL:
         case SHARD_EXPR_DIV:
+        case SHARD_EXPR_MOD:
         case SHARD_EXPR_CONCAT:
         case SHARD_EXPR_MERGE:
         case SHARD_EXPR_EQ:

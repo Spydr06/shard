@@ -2,13 +2,13 @@
 #include <libshard.h>
 
 #include <ctype.h>
-#include <libgen.h>
-#include <string.h>
 #include <errno.h>
+#include <inttypes.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
-#include <inttypes.h>
 
 struct shard_builtin_const {
     const char* full_name;
@@ -42,6 +42,14 @@ static struct shard_value builtin_add(volatile struct shard_evaluator* e, struct
 }
 
 static struct shard_value builtin_sub(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    return shard_eval_subtraction(e,
+        shard_builtin_eval_arg(e, builtin, args, 0),
+        shard_builtin_eval_arg(e, builtin, args, 1),
+        &e->error_scope->loc        
+    );
+}
+
+static struct shard_value builtin_mod(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
     return shard_eval_subtraction(e,
         shard_builtin_eval_arg(e, builtin, args, 0),
         shard_builtin_eval_arg(e, builtin, args, 1),
@@ -848,7 +856,7 @@ static struct shard_value builtin_toString(volatile struct shard_evaluator* e, s
             return arg.boolean ? CSTRING_VAL("1") : CSTRING_VAL("");
         case SHARD_VAL_INT: {
             char* buf = shard_gc_malloc(e->gc, 32);
-            snprintf(buf, 32, "%ld", arg.integer);
+            snprintf(buf, 32, "%" PRId64, arg.integer);
             return CSTRING_VAL(buf);
         } break;
         case SHARD_VAL_LIST: {
@@ -1070,6 +1078,84 @@ static struct shard_value builtin_while(volatile struct shard_evaluator* e, stru
     return NULL_VAL();
 }
 
+static struct shard_value builtin_drop(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value amount = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_list *head = list.list.head;
+    for(int64_t i = 0; i < amount.integer && head; i++, head = head->next);
+
+    return LIST_VAL(head);
+}
+
+static struct shard_value builtin_dropWhile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value pred = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_list *head = list.list.head;
+    for(; head; head = head->next) {
+        struct shard_value pred_result = shard_eval_call(e, pred, head->value, e->error_scope->loc);
+        if(pred_result.type != SHARD_VAL_BOOL)
+            shard_eval_throw(e, e->error_scope->loc, "builtins.dropWhile predicate must return boolean value");
+
+        if(!pred_result.boolean)
+            break;
+    }
+
+    return LIST_VAL(head);
+}
+
+static struct shard_value builtin_take(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value amount = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_list *src = list.list.head;
+    struct shard_list *head = NULL, *cur = NULL;
+
+    for(int64_t i = 0; i < amount.integer && src; i++, src = src->next) {
+        struct shard_list *next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        next->value = src->value;
+        next->next = NULL;
+
+        if(cur)
+            cur->next = next;
+        cur = next;
+        if(!head)
+            head = cur;
+    }
+
+    return LIST_VAL(head);
+}
+
+static struct shard_value builtin_takeWhile(volatile struct shard_evaluator* e, struct shard_builtin* builtin, struct shard_lazy_value** args) {
+    struct shard_value pred = shard_builtin_eval_arg(e, builtin, args, 0);
+    struct shard_value list = shard_builtin_eval_arg(e, builtin, args, 1);
+
+    struct shard_list *src = list.list.head;
+    struct shard_list *head = NULL, *cur = NULL;
+
+    for(; src; src = src->next) {
+        struct shard_value pred_result = shard_eval_call(e, pred, src->value, e->error_scope->loc);
+        if(pred_result.type != SHARD_VAL_BOOL)
+            shard_eval_throw(e, e->error_scope->loc, "builtins.takeWhile predicate must return boolean value");
+
+        if(!pred_result.boolean)
+            break;
+
+        struct shard_list *next = shard_gc_malloc(e->gc, sizeof(struct shard_list));
+        next->value = src->value;
+        next->next = NULL;
+
+        if(cur)
+            cur->next = next;
+        cur = next;
+        if(!head)
+            head = cur;
+    }
+
+    return LIST_VAL(head);
+}
+
 #define IMPORT_BUILTIN 0
 
 struct shard_builtin shard_builtin_toString = SHARD_BUILTIN("builtins.toString", builtin_toString, SHARD_VAL_ANY);
@@ -1096,6 +1182,8 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.defaultFunctionArg", builtin_defaultFunctionArg, SHARD_VAL_STRING, SHARD_VAL_FUNCTION),
     SHARD_BUILTIN("builtins.dirname", builtin_dirname, SHARD_VAL_PATH),
     SHARD_BUILTIN("builtins.div", builtin_div, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
+    SHARD_BUILTIN("builtins.drop", builtin_drop, SHARD_VAL_INT, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.dropWhile", builtin_dropWhile, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.elem", builtin_elem, SHARD_VAL_ANY, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.elemAt", builtin_elemAt, SHARD_VAL_LIST, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.errnoString", builtin_errnoString, SHARD_VAL_INT),
@@ -1126,6 +1214,7 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.map", builtin_map, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.mapAttrs", builtin_mapAttrs, SHARD_VAL_CALLABLE, SHARD_VAL_SET),
     SHARD_BUILTIN("builtins.mergeTree", builtin_mergeTree, SHARD_VAL_SET, SHARD_VAL_SET),
+    SHARD_BUILTIN("builtins.mod", builtin_mod, SHARD_VAL_INT, SHARD_VAL_INT),
     SHARD_BUILTIN("builtins.mul", builtin_mul, SHARD_VAL_NUMERIC, SHARD_VAL_NUMERIC),
     SHARD_BUILTIN("builtins.not", builtin_not, SHARD_VAL_BOOL),
     SHARD_BUILTIN("builtins.serialize", builtin_serialize, SHARD_VAL_ANY),
@@ -1139,6 +1228,8 @@ static struct shard_builtin builtins[] = {
     SHARD_BUILTIN("builtins.toPath", builtin_toPath, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.trim", builtin_trim, SHARD_VAL_STRING),
     SHARD_BUILTIN("builtins.parseInt", builtin_parseInt, SHARD_VAL_STRING),
+    SHARD_BUILTIN("builtins.take", builtin_take, SHARD_VAL_INT, SHARD_VAL_LIST),
+    SHARD_BUILTIN("builtins.takeWhile", builtin_takeWhile, SHARD_VAL_CALLABLE, SHARD_VAL_LIST),
     SHARD_BUILTIN("builtins.tryEval", builtin_tryEval, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.tryGetLocation", builtin_tryGetLocation, SHARD_VAL_ANY),
     SHARD_BUILTIN("builtins.throw", builtin_throw, SHARD_VAL_STRING),

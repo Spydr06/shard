@@ -77,11 +77,13 @@
 #define BUILTIN_VAL(_builtin) ((struct shard_value) {.type = SHARD_VAL_BUILTIN, .builtin.builtin=(_builtin), .builtin.queued_args=NULL, .builtin.num_queued_args=0 })
 #ifndef _AMETHYST_STRNLEN_DEFINED
 
+#if !defined(_GNU_SOURCE) && _POSIX_C_SOURCE < 200809L && !defined(_WASM_STRING_H)
 static inline size_t strnlen(const char *s, size_t n)
 {
 	const char *p = memchr(s, 0, n);
 	return p ? (size_t) (p - s) : n;
 }
+#endif
 
 #endif
 

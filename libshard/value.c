@@ -1,6 +1,7 @@
 #define _LIBSHARD_INTERNAL
 #include <libshard.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 
 struct shard_value shard_value_copy(volatile struct shard_evaluator* e, struct shard_value val) {
@@ -37,7 +38,7 @@ int shard_value_to_string(struct shard_context* ctx, struct shard_string* str, c
             dynarr_append_many(ctx, str, "null", 4);
             break;
         case SHARD_VAL_INT:
-            snprintf(buf, LEN(buf), "%ld", val->integer);
+            snprintf(buf, LEN(buf), "%" PRId64, val->integer);
             dynarr_append_many(ctx, str, buf, strlen(buf));
             break;
         case SHARD_VAL_FLOAT:

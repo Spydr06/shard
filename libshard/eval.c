@@ -504,8 +504,26 @@ struct shard_value shard_eval_division(volatile struct shard_evaluator* e, struc
     ARITH_OP_INT_FLT(/)
 }
 
+struct shard_value shard_eval_modulo(volatile struct shard_evaluator *e, struct shard_value left, struct shard_value right, struct shard_location *loc) {
+    if(left.type != SHARD_VAL_INT)
+        shard_eval_throw(e, *loc, "`%%`: left operand is not of type `integer`");
+    if(right.type != SHARD_VAL_INT)
+        shard_eval_throw(e, *loc, "`%%`: right operand is not of type `integer`");
+
+    return INT_VAL(left.integer % right.integer);
+}
+
 static inline struct shard_value eval_division(volatile struct shard_evaluator* e, struct shard_expr* expr) {
     return shard_eval_division(
+        e,
+        eval(e, expr->binop.lhs),
+        eval(e, expr->binop.rhs),
+        &expr->loc
+    );
+}
+
+static inline struct shard_value eval_modulo(volatile struct shard_evaluator *e, struct shard_expr *expr) {
+    return shard_eval_modulo(
         e,
         eval(e, expr->binop.lhs),
         eval(e, expr->binop.rhs),
@@ -971,6 +989,8 @@ static struct shard_value eval(volatile struct shard_evaluator* e, struct shard_
             return eval_multiplication(e, expr);
         case SHARD_EXPR_DIV:
             return eval_division(e, expr);
+        case SHARD_EXPR_MOD:
+            return eval_modulo(e, expr);
         case SHARD_EXPR_LOGAND:
             return eval_logand(e, expr);
         case SHARD_EXPR_LOGOR:

@@ -1,0 +1,8 @@
+let
+    curry = f: a: b: f { inherit a b; };
+    uncurry = f: { a, b }: f a b;
+
+    add = { a, b }: a + b;
+    succ = (curry add) 1;
+in succ 5
+

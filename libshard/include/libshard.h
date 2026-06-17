@@ -308,6 +308,7 @@ enum shard_token_type {
     SHARD_TOK_SUB, // -
     SHARD_TOK_MUL, // *
     SHARD_TOK_DIV, // /
+    SHARD_TOK_PERCENT, // %
     SHARD_TOK_PIPE, // |
     SHARD_TOK_LOGAND, // &&
     SHARD_TOK_LOGOR, // ||
@@ -384,6 +385,7 @@ enum shard_expr_type {
     SHARD_EXPR_SUB,
     SHARD_EXPR_MUL,
     SHARD_EXPR_DIV,
+    SHARD_EXPR_MOD,
     SHARD_EXPR_EQ,
     SHARD_EXPR_NE,
     SHARD_EXPR_GT,

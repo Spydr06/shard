@@ -2,6 +2,7 @@
 #include <libshard.h>
 
 #include <stdio.h>
+#include <inttypes.h>
 
 static const char* token_type_strings[_SHARD_TOK_LEN] = {
     "<end of file>",
@@ -85,7 +86,7 @@ void shard_dump_token(char* dest, size_t n, const struct shard_token* tok) {
             snprintf(dest, n, "%f", tok->value.floating);
             break;
         case SHARD_TOK_INT:
-            snprintf(dest, n, "%ld", tok->value.integer);
+            snprintf(dest, n, "%" PRId64, tok->value.integer);
             break;
         default:
             if(token_type_strings[tok->type])
@@ -124,7 +125,7 @@ void shard_dump_expr(struct shard_context* ctx, struct shard_string* str, const 
         }
         case SHARD_EXPR_INT: {
             char buf[32];
-            snprintf(buf, 32, "%ld", expr->integer);
+            snprintf(buf, 32, "%" PRId64, expr->integer);
             dynarr_append_many(ctx, str, buf, strlen(buf));
             break;
         }

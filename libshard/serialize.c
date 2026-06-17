@@ -2,7 +2,7 @@
 
 #include <ctype.h>
 #include <string.h>
-
+#include <inttypes.h>
 #include <stdio.h>
 
 static void serialize_escaped_string(volatile struct shard_evaluator* e, struct shard_string* buffer, const char* str, size_t len) {
@@ -58,7 +58,7 @@ SHARD_DECL void shard_serialize2(volatile struct shard_evaluator* e, struct shar
             break;
         case SHARD_VAL_INT:
             char itos[100];
-            snprintf(itos, sizeof(itos), "%ld", value.integer);
+            snprintf(itos, sizeof(itos), "%" PRId64, value.integer);
 
             shard_gc_string_append(e->gc, buffer, itos);
             break;

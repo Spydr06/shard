@@ -1,4 +1,9 @@
-let fizzBuzz = n: (if n % 15 == 0 then "FizzBuzz"
-            else if n % 3 == 0 then "Fizz"
-            else if n % 5 == 0 then "Bazz");
-in fizzBuzz 15 
+with builtins; let
+    fizzBuzz = genList (i: case i of
+        x if i % 15 == 0 => "FizzBuzz";
+        x if i % 3 == 0  => "Fizz";
+        x if i % 5 == 0  => "Buzz";
+        _ => "${i}"
+    );
+in join "\n" $ map toString $ fizzBuzz 100
+
