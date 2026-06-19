@@ -363,13 +363,33 @@ static int parse_type(struct parser* p, enum shard_value_type* type) {
     return err;
 }
 
+static int parse_at_postfix_pattern(struct parser *p, struct shard_pattern *pattern, shard_ident_t prefix) {
+    int err = 0;
+
+    if(p->token.type == SHARD_TOK_AT) {
+        if(prefix)
+            err = errorf(p, "`@` pattern already applied before the pattern");
+        
+        if(advance(p))
+            err = EINVAL;
+
+        shard_ident_t ident = p->token.value.string;
+        if(consume(p, SHARD_TOK_IDENT))
+            return EINVAL;
+
+        pattern->ident = ident;
+    }
+
+    return err;
+} 
+
 static int parse_set_pattern(struct parser* p, struct shard_pattern* pattern, shard_ident_t prefix, bool skip_lbrace, shard_ident_t first_attr) {
+    memset(pattern, 0, sizeof(struct shard_pattern));
+
     pattern->type = SHARD_PAT_SET;
-    pattern->ellipsis = false;
     pattern->ident = prefix;
     pattern->loc = p->token.location;
-    pattern->attrs = (struct shard_binding_list){0};
-    pattern->type_constraint = SHARD_VAL_SET | SHARD_VAL_NULL;
+    pattern->constraint = SHARD_VAL_SET | SHARD_VAL_NULL;
 
     int err = skip_lbrace ? 0 : advance(p);
 
@@ -421,19 +441,59 @@ static int parse_set_pattern(struct parser* p, struct shard_pattern* pattern, sh
     if(consume(p, SHARD_TOK_RBRACE))
         err = EINVAL;
 
-    if(p->token.type == SHARD_TOK_AT) {
-        if(prefix)
-            err = errorf(p, "`@` pattern already applied before the set");
-        
-        if(advance(p))
-            err = EINVAL;
+    if(parse_at_postfix_pattern(p, pattern, prefix))
+        err = EINVAL;
 
-        shard_ident_t ident = p->token.value.string;
-        if(consume(p, SHARD_TOK_IDENT))
-            return EINVAL;
+    return err;
+}
 
-        pattern->ident = ident;
+static int parse_list_pattern(struct parser* p, struct shard_pattern* pattern, shard_ident_t prefix, bool skip_lbracket, shard_ident_t first_elem) {
+    memset(pattern, 0, sizeof(struct shard_pattern));
+    
+    pattern->type = SHARD_PAT_LIST;
+    pattern->ident = prefix;
+    pattern->loc = p->token.location;
+    pattern->constraint = SHARD_VAL_LIST;
+
+    int err = skip_lbracket ? 0 : advance(p);
+
+    bool first_iter = true;
+    while(p->token.type != SHARD_TOK_RBRACKET) {
+        shard_ident_t elem = first_elem;
+
+        if(!first_iter || !first_elem) {
+            elem = p->token.value.string;
+            if(consume(p, SHARD_TOK_IDENT)) {
+                err = EINVAL;
+                break;
+            }
+        }
+
+        first_iter = false;
+
+        dynarr_append(p->ctx, &pattern->elems, (char*) elem);
+
+        if(p->token.type == SHARD_TOK_ELLIPSE) {
+            pattern->ellipsis = true;
+            if(advance(p))
+                err = EINVAL;
+            break;
+        }
+
+        if(p->token.type != SHARD_TOK_RBRACKET) {
+            int err2 = consume(p, SHARD_TOK_COMMA);
+            if(err2) {
+                err = err2;
+                break;
+            }
+        }
     }
+
+    if(consume(p, SHARD_TOK_RBRACKET))
+        err = EINVAL;
+
+    if(parse_at_postfix_pattern(p, pattern, prefix))
+        err = EINVAL;
 
     return err;
 }
@@ -444,21 +504,36 @@ static int parse_postfix_pattern(struct parser* p, struct shard_pattern* pattern
     pattern->type = SHARD_PAT_IDENT;
     pattern->ident = ident;
     pattern->loc = ident_loc;
-    pattern->type_constraint = SHARD_VAL_ANY;
+    pattern->constraint = SHARD_VAL_ANY;
 
     switch(p->token.type) {
         case SHARD_TOK_DOUBLE_COLON:
             int err2[] = {
                 advance(p),
-                parse_type(p, &pattern->type_constraint)
+                parse_type(p, &pattern->constraint)
             };
             if(any_err(err2, LEN(err2)))
                 return any_err(err2, LEN(err2));
             break;
         case SHARD_TOK_AT:
-            int err = parse_set_pattern(p, pattern, ident, false, NULL);
+            int err = advance(p);
             if(err)
                 return err;
+
+            switch(p->token.type) {
+                case SHARD_TOK_LBRACE:
+                    if((err = parse_set_pattern(p, pattern, ident, true, NULL)))
+                        return err;
+                    break;
+                case SHARD_TOK_RBRACE:
+                    if((err = parse_list_pattern(p, pattern, ident, true, NULL)))
+                        return err;
+                    break;
+                default:
+                    static char buf[1024];
+                    shard_dump_token(buf, sizeof(buf), &p->token);
+                    return errorf(p, "unexpected token `%s`, expect pattern starting with `{` or `[`", buf);
+            }
             break;
         default:
     }
@@ -484,20 +559,20 @@ static int parse_const_pattern(struct parser* p, struct shard_pattern* pattern) 
     pattern->loc = p->token.location;
 
     switch(p->token.type) {
+        case SHARD_TOK_SUB:
+            pattern->constraint = SHARD_VAL_NUMERIC;
+            break;
         case SHARD_TOK_INT:
-            pattern->type_constraint = SHARD_VAL_INT;
+            pattern->constraint = SHARD_VAL_INT;
             break;
         case SHARD_TOK_FLOAT:
-            pattern->type_constraint = SHARD_VAL_FLOAT;
+            pattern->constraint = SHARD_VAL_FLOAT;
             break;
         case SHARD_TOK_STRING:
-            pattern->type_constraint = SHARD_VAL_STRING;
+            pattern->constraint = SHARD_VAL_STRING;
             break;
         case SHARD_TOK_PATH:
-            pattern->type_constraint = SHARD_VAL_PATH;
-            break;
-        case SHARD_TOK_LBRACKET:
-            pattern->type_constraint = SHARD_VAL_LIST;
+            pattern->constraint = SHARD_VAL_PATH;
             break;
         default:
             assert(!"unreachable");
@@ -521,16 +596,18 @@ static int parse_pattern(struct parser* p, struct shard_pattern* pattern) {
             return any_err(errs, LEN(errs));
         case SHARD_TOK_LBRACE:
             return parse_set_pattern(p, pattern, NULL, false, NULL);
+        case SHARD_TOK_LBRACKET:
+            return parse_list_pattern(p, pattern, NULL, false, NULL);
         case SHARD_TOK_INT:
         case SHARD_TOK_FLOAT:
         case SHARD_TOK_STRING:
         case SHARD_TOK_PATH:
-        case SHARD_TOK_LBRACKET:
+        case SHARD_TOK_SUB:
             return parse_const_pattern(p, pattern);
         default:
             static char buf[1024];
             shard_dump_token(buf, sizeof(buf), &p->token);
-            return errorf(p, "unexpected token `%s`, expect expression", buf);
+            return errorf(p, "unexpected token `%s`, expect pattern starting with `{`, `[`, `-`, integer, float, string or path literal", buf);
     }
 }
 
@@ -564,6 +641,23 @@ static int parse_ident(struct parser* p, struct shard_expr* expr) {
     }
 }
 
+static int parse_single_list_pattern(struct parser *p, struct shard_pattern *pattern, shard_ident_t elem, struct shard_location loc) {
+    memset(pattern, 0, sizeof(struct shard_pattern));
+
+    pattern->type = SHARD_PAT_LIST;
+    pattern->loc = loc;
+    pattern->constraint = SHARD_VAL_LIST;
+
+    if(elem) {
+        pattern->elems.count = 1;
+        pattern->elems.capacity = 1;
+        pattern->elems.items = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern*));
+        pattern->elems.items[0] = (char*) elem;
+    }
+
+    return parse_at_postfix_pattern(p, pattern, NULL);
+}
+
 static int parse_list(struct parser* p, struct shard_expr* expr) {
     expr->type = SHARD_EXPR_LIST;
     expr->loc = p->token.location;
@@ -571,6 +665,9 @@ static int parse_list(struct parser* p, struct shard_expr* expr) {
 
     int err = advance(p);
     
+    bool first_iter = true;
+    shard_ident_t first_ident = NULL;
+
     struct shard_expr elem;
     while(p->token.type != SHARD_TOK_RBRACKET) {
         if(p->token.type == SHARD_TOK_EOF)
@@ -579,10 +676,46 @@ static int parse_list(struct parser* p, struct shard_expr* expr) {
         int err2 = parse_expr(p, &elem, PREC_LIST_LITERAL);
         if(err2)
             err = err2;
+
+        if(first_iter && elem.type == SHARD_EXPR_IDENT)
+            first_ident = elem.ident;
+        
+        if(first_iter && first_ident && (p->token.type == SHARD_TOK_COMMA || p->token.type == SHARD_TOK_ELLIPSE)) {
+            dynarr_free(p->ctx, &expr->list.elems);
+
+            struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+            memset(arg, 0, sizeof(struct shard_pattern));
+            int err2[] = {
+                err,
+                parse_list_pattern(p, arg, NULL, true, first_ident),
+                consume(p, SHARD_TOK_COLON),
+                parse_function(p, expr, arg)
+            };
+            return any_err(err2, LEN(err2));
+        }
+
+        first_iter = false;
         dynarr_append(p->ctx, &expr->list.elems, elem);
     }
 
     int err3 = advance(p);
+
+    if((expr->list.elems.count == 0 || (expr->list.elems.count == 1 && first_ident))
+            && (p->token.type == SHARD_TOK_COLON || p->token.type == SHARD_TOK_AT)) {
+        dynarr_free(p->ctx, &expr->list.elems);
+
+        struct shard_pattern* arg = shard_arena_malloc(p->ctx, p->ctx->ast, sizeof(struct shard_pattern));
+        memset(arg, 0, sizeof(struct shard_pattern));
+        int err5[] = {
+            err,
+            err3,
+            parse_single_list_pattern(p, arg, first_ident, expr->loc),
+            consume(p, SHARD_TOK_COLON),
+            parse_function(p, expr, arg)
+        };
+        return any_err(err5, LEN(err5));
+    }
+
     return EITHER(err, err3);
 }
 

@@ -52,7 +52,6 @@ There are a few example programs in the `examples/` directory
 ## TODO
 
 - stack-overflow detection and handling in the evaluator
-- `==` and `!=` for lists and sets
 
 ## Building
 
@@ -158,6 +157,10 @@ autocmd Syntax shard runtime! shard.vim
 | `{ x ? "foo" }`       | Default attribute value |
 | `{ x, ... }`          | Ignored additional attributes |
 | `{ x, ... } @ args`   | Whole set binding to `args` |
+| `[ ]`                 | Empty list |
+| `[ x, y ]`            | Exact list destructuring |
+| `[ x, xs... ]`        | List destructuring, putting the tail in `xs` |
+| `[ x, _... ] @ args   | List destructuring, binding to `args` |
 | `x if x == ???`       | If guards |
 | `x :: int \| float`   | Type selection |
 | `_`                   | Default case |

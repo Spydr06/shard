@@ -3,14 +3,24 @@
 #include <libshard.h>
 
 static void shard_free_pattern(struct shard_context* ctx, struct shard_pattern* pattern) {
-    shard_free_expr(ctx, pattern->constant);
     shard_free_expr(ctx, pattern->condition);
-    for(size_t i = 0; i < pattern->attrs.count; i++) {
-        struct shard_binding attr = pattern->attrs.items[i];
-        if(attr.value)
-            shard_free_expr(ctx, attr.value);
+
+    switch(pattern->type) {
+        case SHARD_PAT_SET:
+            for(size_t i = 0; i < pattern->attrs.count; i++) {
+                struct shard_binding attr = pattern->attrs.items[i];
+                if(attr.value)
+                    shard_free_expr(ctx, attr.value);
+            }
+            dynarr_free(ctx, &pattern->attrs);
+            break;
+        case SHARD_PAT_LIST:
+            dynarr_free(ctx, &pattern->elems);
+            break;
+        case SHARD_PAT_CONSTANT:
+            shard_free_expr(ctx, pattern->constant);
+            break;
     }
-    dynarr_free(ctx, &pattern->attrs);
 }
 
 void shard_free_expr(struct shard_context* ctx, struct shard_expr* expr) {

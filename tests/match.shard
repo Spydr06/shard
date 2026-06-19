@@ -2,6 +2,10 @@ let match_test = x: (case x of
     v if v == 69     => "nice";
     _ :: float | int => "numeric";
     { n, ... }       => match_test n;
+    []               => "nil";
+    [x]              => "single: ${match_test x}";
+    [x, y, z]        => "triple: (${x}, ${y}, ${z})";
+    [x, xs...]       => "head: ${x}, tail: ${xs}";
     v                => "other: " + (builtins.typeOf v));
 in
     assert (match_test 69) == "nice";
@@ -9,6 +13,10 @@ in
     assert (match_test 3.14) == "numeric";
     assert (match_test { n = 69; }) == "nice";
     assert (match_test { m = 0; }) == "other: set";
-    assert (match_test [1 2 3]) == "other: list";
+    assert (match_test []) == "nil";
+    assert (match_test [69]) == "single: nice";
+    assert (match_test [1 2 3]) == "triple: (1, 2, 3)";
+    assert (match_test [1 2 3 4]) == "head: 1, tail: [2 3 4]";
+    assert (match_test [69 420]) == "head: 69, tail: [420]";
 
     true

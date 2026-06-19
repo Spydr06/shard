@@ -684,14 +684,14 @@ static inline struct shard_value eval_ternary(volatile struct shard_evaluator* e
 
 static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struct shard_pattern* pattern, struct shard_lazy_value* lazy_value, struct shard_location* error_loc) {
     struct shard_value value = {0};
-    if(pattern->type_constraint != SHARD_VAL_ANY) {
+    if(pattern->constraint != SHARD_VAL_ANY) {
         value = eval_lazy(e, lazy_value);
-        if(!(value.type & pattern->type_constraint)) {
+        if(!(value.type & pattern->constraint)) {
             if(error_loc)
                 shard_eval_throw(e,
                     *error_loc,
                     "function expected argument of type `%s`, but got `%s`",
-                    shard_value_type_to_string(e->ctx, pattern->type_constraint),
+                    shard_value_type_to_string(e->ctx, pattern->constraint),
                     shard_value_type_to_string(e->ctx, value.type)
                 );
             else
@@ -728,8 +728,7 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
                     } 
                     else if(error_loc)
                         shard_eval_throw(e, *error_loc, "set does not contain expected attribute `%s`", pattern->attrs.items[i].ident);
-                    else
-                        return MATCH_FAIL;
+                    return MATCH_FAIL;
                 }
 
                 shard_set_put(set, pattern->attrs.items[i].ident, val);
@@ -744,6 +743,42 @@ static struct shard_set* match_pattern(volatile struct shard_evaluator* e, struc
 
             if(pattern->ident && strcmp(pattern->ident, "_"))
                 shard_set_put(set, pattern->ident, shard_unlazy(e->ctx, SET_VAL(set)));
+            break;
+        case SHARD_PAT_LIST:
+            size_t list_length = shard_list_length(value.list.head);
+            size_t num_fixed_elems = pattern->elems.count;
+
+            if(!pattern->ellipsis && list_length != num_fixed_elems) {
+                if(error_loc)
+                    shard_eval_throw(e, *error_loc, "list of length `%zu` does not match expected length `%zu`", list_length, num_fixed_elems);
+                return MATCH_FAIL;
+            }
+
+            if(pattern->ellipsis) {
+                assert(num_fixed_elems > 0);
+                num_fixed_elems--;
+
+                if(list_length < num_fixed_elems) {
+                    if(error_loc)
+                        shard_eval_throw(e, *error_loc, "list of length `%zu` does not match expected minimum length `%zu`", list_length, num_fixed_elems);
+                    return MATCH_FAIL;
+                }
+            }
+
+            set = shard_set_init(e->ctx, pattern->elems.count);
+
+            struct shard_list *head = value.list.head;
+            for(size_t i = 0; i < num_fixed_elems; i++) {
+                shard_ident_t elem = pattern->elems.items[i];
+                
+                if(strcmp(elem, "_"))
+                    shard_set_put(set, elem, head->value);
+                
+                head = head->next;
+            }
+
+            if(pattern->ellipsis && strcmp(pattern->elems.items[num_fixed_elems], "_"))
+                shard_set_put(set, pattern->elems.items[num_fixed_elems], shard_unlazy(e->ctx, LIST_VAL(head)));
             break;
         case SHARD_PAT_CONSTANT:
             struct shard_value lhs = eval_lazy(e, lazy_value);

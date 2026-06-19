@@ -249,6 +249,15 @@ void shard_dump_pattern(struct shard_context* ctx, struct shard_string* str, con
     switch(pattern->type) {
         case SHARD_PAT_IDENT:
             dynarr_append_many(ctx, str, pattern->ident, strlen(pattern->ident));
+            if(pattern->constraint != SHARD_VAL_ANY) {
+                const char *type = shard_value_type_to_string(ctx, pattern->constraint);
+
+                dynarr_append_many(ctx, str, " :: ", 4);
+                dynarr_append_many(ctx, str, type, strlen(type));
+            }
+            break;
+        case SHARD_PAT_CONSTANT:
+            shard_dump_expr(ctx, str, pattern->constant);
             break;
         case SHARD_PAT_SET:
             dynarr_append(ctx, str, '{');
@@ -271,6 +280,27 @@ void shard_dump_pattern(struct shard_context* ctx, struct shard_string* str, con
                 dynarr_append_many(ctx, str, "... ", 4);
 
             dynarr_append(ctx, str, '}');
+
+            if(pattern->ident) {
+                dynarr_append_many(ctx, str, " @ ", 3);
+                dynarr_append_many(ctx, str, pattern->ident, strlen(pattern->ident));
+            }
+            break;
+        case SHARD_PAT_LIST:
+            dynarr_append(ctx, str, '[');
+
+            for(size_t i = 0; i < pattern->elems.count; i++) {
+                dynarr_append(ctx, str, ' ');
+
+                shard_ident_t ident = pattern->elems.items[i];
+                dynarr_append_many(ctx, str, ident, strlen(ident));
+            }
+
+            if(pattern->ellipsis)
+                dynarr_append_many(ctx, str, "... ", 4);
+
+            dynarr_append(ctx, str, ' ');
+            dynarr_append(ctx, str, ']');
 
             if(pattern->ident) {
                 dynarr_append_many(ctx, str, " @ ", 3);

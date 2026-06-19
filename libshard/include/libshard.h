@@ -514,22 +514,25 @@ const char* shard_value_type_to_string(struct shard_context* ctx, enum shard_val
 
 enum shard_pattern_type {
     SHARD_PAT_IDENT,
+    SHARD_PAT_CONSTANT,
     SHARD_PAT_SET,
-    SHARD_PAT_CONSTANT
+    SHARD_PAT_LIST,
 };
 
 struct shard_pattern {
-    enum shard_pattern_type type;
+    uint8_t type;
+    bool ellipsis; // placed here for better alignment, used for .set and .list
+    enum shard_value_type constraint;
     struct shard_location loc;
 
-    bool ellipsis; 
-    enum shard_value_type type_constraint;
-
-    struct shard_binding_list attrs; 
     shard_ident_t ident;
-
-    struct shard_expr* constant;
     struct shard_expr* condition;
+
+    union {
+        struct shard_binding_list attrs;
+        struct shard_string_list elems;
+        struct shard_expr* constant;
+    };
 };
 
 SHARD_DECL int shard_parse(struct shard_context* ctx, struct shard_source* src, struct shard_expr* expr);
