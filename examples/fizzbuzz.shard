@@ -1,8 +1,8 @@
 with builtins; let
     fizzBuzz = genList (i: case i of
-        x if i % 15 == 0 => "FizzBuzz";
-        x if i % 3 == 0  => "Fizz";
-        x if i % 5 == 0  => "Buzz";
+        _ if i % 15 == 0 => "FizzBuzz";
+        _ if i % 3 == 0  => "Fizz";
+        _ if i % 5 == 0  => "Buzz";
         _ => "${i}"
     );
 in join "\n" $ map toString $ fizzBuzz 100

@@ -1,4 +1,6 @@
 let
+    curry = f:
+
     curry = f: a: b: f { inherit a b; };
     uncurry = f: { a, b }: f a b;
 
